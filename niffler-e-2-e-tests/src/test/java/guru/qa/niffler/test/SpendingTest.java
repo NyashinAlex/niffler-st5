@@ -8,18 +8,21 @@ import guru.qa.niffler.jupiter.annotation.Spend;
 import guru.qa.niffler.jupiter.annotation.meta.WebTest;
 import guru.qa.niffler.model.CurrencyValues;
 import guru.qa.niffler.model.SpendJson;
+import guru.qa.niffler.page.auth.LoginPage;
+import guru.qa.niffler.page.auth.StartPage;
+import guru.qa.niffler.page.main.MainPage;
 import io.qameta.allure.Allure;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.OutputType;
+import org.openqa.selenium.chrome.ChromeOptions;
 
 import java.io.ByteArrayInputStream;
 import java.util.Objects;
 
 import static com.codeborne.selenide.CollectionCondition.size;
 import static com.codeborne.selenide.Condition.text;
-import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$;
 
 
