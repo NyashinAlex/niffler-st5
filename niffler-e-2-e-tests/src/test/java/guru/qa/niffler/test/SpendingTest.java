@@ -2,7 +2,6 @@ package guru.qa.niffler.test;
 
 import com.codeborne.selenide.Configuration;
 import com.codeborne.selenide.Selenide;
-import com.codeborne.selenide.SelenideElement;
 import guru.qa.niffler.jupiter.annotation.Category;
 import guru.qa.niffler.jupiter.annotation.Spend;
 import guru.qa.niffler.jupiter.extension.CategoryExtension;
@@ -52,8 +51,7 @@ public class SpendingTest {
     )
     @Test
     void spendingShouldBeDeletedAfterTableAction(SpendJson spendJson) {
-        SelenideElement rowWithSpending = mainPage.getSpend(spendJson.description());
-        mainPage.deleteSpend(rowWithSpending);
-        mainPage.checkSpendNull();
+        mainPage.deleteSpendingByDescription(spendJson.description());
+        mainPage.checkSpendIsEmpty();
     }
 }

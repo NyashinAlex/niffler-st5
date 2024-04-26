@@ -9,7 +9,6 @@ import static com.codeborne.selenide.Selenide.$;
 public class MainPage {
 
     private final SelenideElement tableSpends = $(".table.spendings-table");
-    private final SelenideElement tableNullSpends = $(".table.spendings-table tbody");
     private final SelenideElement deleteSpendButton = $(".spendings__bulk-actions button");
 
     public SelenideElement getSpend(String description) {
@@ -18,12 +17,12 @@ public class MainPage {
                 .find(text(description));
     }
 
-    public void deleteSpend(SelenideElement rowWithSpending) {
-        rowWithSpending.$$("td").first().click();
+    public void deleteSpendingByDescription(String description) {
+        getSpend(description).$("td").click();
         deleteSpendButton.click();
     }
 
-    public void checkSpendNull() {
-        tableNullSpends.$$("tr").shouldHave(size(0));
+    public void checkSpendIsEmpty() {
+        tableSpends.$$("tr").shouldHave(size(0));
     }
 }
