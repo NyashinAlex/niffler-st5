@@ -28,22 +28,21 @@ public class SpendingTest {
 
     static {
         Configuration.browserSize = "1920x1080";
+        Configuration.browser = "chrome";
+        ChromeOptions chromeOptions = new ChromeOptions();
+        chromeOptions.addArguments("--incognito");
+        Configuration.browserCapabilities = chromeOptions;
     }
+
+    private final StartPage startPage = new StartPage();
+    private final LoginPage loginPage = new LoginPage();
+    private final MainPage mainPage = new MainPage();
 
     @BeforeEach
     void doLogin() {
-        // createSpend
         Selenide.open("http://127.0.0.1:3000/");
-        $("a[href*='redirect']").click();
-        $("input[name='username']").setValue("dima");
-        $("input[name='password']").setValue("12345");
-        $("button[type='submit']").click();
-    }
-
-    @Test
-    void anotherTest() {
-        Selenide.open("http://127.0.0.1:3000/");
-        $("a[href*='redirect']").should(visible);
+        startPage.clickLoginButton();
+        loginPage.singInNiffler("Ale", "1234");
     }
 
     @AfterEach
