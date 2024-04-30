@@ -1,26 +1,28 @@
 package guru.qa.niffler.jupiter.extension;
 
-import guru.qa.niffler.api.CategoryApi;
+import guru.qa.niffler.api.SpendApi;
 import guru.qa.niffler.jupiter.annotation.Category;
 import guru.qa.niffler.model.CategoryJson;
 import okhttp3.OkHttpClient;
+import okhttp3.logging.HttpLoggingInterceptor;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
-import org.junit.jupiter.api.extension.ParameterContext;
-import org.junit.jupiter.api.extension.ParameterResolutionException;
-import org.junit.jupiter.api.extension.ParameterResolver;
 import org.junit.platform.commons.support.AnnotationSupport;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
 
 import java.io.IOException;
+import java.util.Objects;
 
-public class CategoryExtension implements BeforeEachCallback, ParameterResolver {
+import static okhttp3.logging.HttpLoggingInterceptor.Level.BODY;
+
+public class CategoryExtension implements BeforeEachCallback {
 
     public static final ExtensionContext.Namespace NAMESPACE
-            = ExtensionContext.Namespace.create(SpendExtension.class);
+            = ExtensionContext.Namespace.create(CategoryExtension.class);
 
     private static final OkHttpClient okHttpClient = new OkHttpClient.Builder()
+            .addNetworkInterceptor(new HttpLoggingInterceptor().setLevel(BODY))
             .build();
 
     private final Retrofit retrofit = new Retrofit.Builder()
@@ -30,39 +32,30 @@ public class CategoryExtension implements BeforeEachCallback, ParameterResolver 
             .build();
 
     @Override
-    public void beforeEach(ExtensionContext context) throws Exception {
-        CategoryApi categoryApi = retrofit.create(CategoryApi.class);
+    public void beforeEach(ExtensionContext extensionContext) throws Exception {
+        SpendApi spendApi = retrofit.create(SpendApi.class);
 
         AnnotationSupport.findAnnotation(
-                context.getRequiredTestMethod(),
+                extensionContext.getRequiredTestMethod(),
                 Category.class
         ).ifPresent(
-                category -> {
+                cat -> {
                     CategoryJson categoryJson = new CategoryJson(
                             null,
-                            category.category(),
-                            category.username()
+                            cat.category(),
+                            cat.username()
                     );
                     try {
-                        CategoryJson result = categoryApi.addCategory(categoryJson).execute().body();
-                        context.getStore(NAMESPACE).put("category", result);
+                        CategoryJson result = Objects.requireNonNull(
+                                spendApi.createCategory(categoryJson).execute().body()
+                        );
+                        extensionContext.getStore(NAMESPACE).put(
+                                extensionContext.getUniqueId(), result
+                        );
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
                 }
         );
-    }
-
-    @Override
-    public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
-        return parameterContext
-                .getParameter()
-                .getType()
-                .isAssignableFrom(CategoryJson.class);
-    }
-
-    @Override
-    public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
-        return extensionContext.getStore(NAMESPACE).get("category");
     }
 }
