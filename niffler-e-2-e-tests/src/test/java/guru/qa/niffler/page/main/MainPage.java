@@ -10,6 +10,7 @@ public class MainPage {
 
     private final SelenideElement tableSpends = $(".table.spendings-table");
     private final SelenideElement deleteSpendButton = $(".spendings__bulk-actions button");
+    public final SelenideElement iconPeople = $("[data-tooltip-id=\"people\"]");
 
     public SelenideElement getSpend(String description) {
         return tableSpends.scrollTo()
