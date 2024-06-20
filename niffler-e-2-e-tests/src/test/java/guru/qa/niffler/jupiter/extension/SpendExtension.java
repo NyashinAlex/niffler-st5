@@ -1,89 +1,97 @@
 package guru.qa.niffler.jupiter.extension;
 
-import guru.qa.niffler.api.SpendApi;
 import guru.qa.niffler.jupiter.annotation.Spend;
+import guru.qa.niffler.jupiter.annotation.Spends;
 import guru.qa.niffler.model.CategoryJson;
 import guru.qa.niffler.model.SpendJson;
-import okhttp3.OkHttpClient;
-import okhttp3.logging.HttpLoggingInterceptor;
+import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
 import org.junit.platform.commons.support.AnnotationSupport;
-import retrofit2.Retrofit;
-import retrofit2.converter.jackson.JacksonConverterFactory;
 
-import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
-import java.util.Objects;
+import java.util.List;
 
-import static okhttp3.logging.HttpLoggingInterceptor.Level.BODY;
-
-public class SpendExtension implements BeforeEachCallback, ParameterResolver {
+public abstract class SpendExtension implements BeforeEachCallback, AfterEachCallback, ParameterResolver {
 
     public static final ExtensionContext.Namespace NAMESPACE
             = ExtensionContext.Namespace.create(SpendExtension.class);
 
-    private static final OkHttpClient okHttpClient = new OkHttpClient.Builder()
-            .addNetworkInterceptor(new HttpLoggingInterceptor().setLevel(BODY))
-            .build();
-
-    private final Retrofit retrofit = new Retrofit.Builder()
-            .client(okHttpClient)
-            .baseUrl("http://127.0.0.1:8093/")
-            .addConverterFactory(JacksonConverterFactory.create())
-            .build();
-
     @Override
     public void beforeEach(ExtensionContext extensionContext) throws Exception {
-        SpendApi spendApi = retrofit.create(SpendApi.class);
-
         CategoryJson category = extensionContext.getStore(CategoryExtension.NAMESPACE).get(
                 extensionContext.getUniqueId(),
                 CategoryJson.class
         );
 
+        List<Spend> potentialSpend = new ArrayList<>();
+
         AnnotationSupport.findAnnotation(
                 extensionContext.getRequiredTestMethod(),
-                Spend.class
-        ).ifPresent(
-                spend -> {
-                    SpendJson spendJson = new SpendJson(
-                            null,
-                            new Date(),
-                            category.category(),
-                            spend.currency(),
-                            spend.amount(),
-                            spend.description(),
-                            category.username()
-                    );
-                    try {
-                        SpendJson result = Objects.requireNonNull(
-                                spendApi.createSpend(spendJson).execute().body()
-                        );
-                        extensionContext.getStore(NAMESPACE).put(
-                                extensionContext.getUniqueId(),
-                                result
-                        );
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
+                Spends.class
+        ).ifPresentOrElse(
+                spends -> potentialSpend.addAll(Arrays.stream(spends.value()).toList()),
+                () -> AnnotationSupport.findAnnotation(
+                        extensionContext.getRequiredTestMethod(),
+                        Spend.class
+                ).ifPresent(potentialSpend::add)
         );
+
+        if (!potentialSpend.isEmpty()) {
+            List<SpendJson> created = new ArrayList<>();
+            for (Spend spend : potentialSpend) {
+                SpendJson spendJson = new SpendJson(
+                        null,
+                        new Date(),
+                        spend.amount(),
+                        spend.currency(),
+                        category.category(),
+                        spend.description(),
+                        category.username()
+                );
+                created.add(createSpend(spendJson));
+            }
+            extensionContext.getStore(NAMESPACE)
+                    .put(extensionContext.getUniqueId(), created);
+        }
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public void afterEach(ExtensionContext context) throws Exception {
+        context.getStore(NAMESPACE)
+                .get(context.getUniqueId(), List.class)
+                .forEach(spend -> removeSpend((SpendJson) spend));
     }
 
     @Override
     public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
-        return parameterContext
-                .getParameter()
-                .getType()
-                .isAssignableFrom(SpendJson.class);
+        Class<?> type = parameterContext.getParameter()
+                .getType();
+        return type.isAssignableFrom(SpendJson.class) || type.isAssignableFrom(SpendJson[].class);
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException {
-        return extensionContext.getStore(NAMESPACE).get(extensionContext.getUniqueId());
+        Class<?> type = parameterContext
+                .getParameter()
+                .getType();
+
+        List<SpendJson> createdSpends = extensionContext.getStore(NAMESPACE)
+                .get(extensionContext.getUniqueId(), List.class);
+
+        return type.isAssignableFrom(SpendJson.class)
+                ? createdSpends.getFirst()
+                : createdSpends.toArray(SpendJson[]::new);
     }
+
+    protected abstract SpendJson createSpend(SpendJson spend);
+
+    protected abstract void removeSpend(SpendJson spend);
 }
